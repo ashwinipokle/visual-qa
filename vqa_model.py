@@ -5,6 +5,8 @@ import sys
 import h5py
 import argparse
 
+import utils
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.models.rnn import rnn_cell
@@ -39,14 +41,25 @@ class Config:
     img_norm = True  # normalize image
 
     gpu_id = 0
-    seed = 123
 
     ### checkpoints
-    save_checkpoint_every = 25000
+    save_checkpoint_every = 15000
+
+    ### number of checkpoints to keep
+    keep = 1
 
     input_image_h5  = './data_img.h5'
     input_ques_h5   = './data_prepro.h5'
     input_json      = './data_prepro.json'
+
+    max_gradient_norm = 10.0
+
+    #### other
+    print_every = 100
+    eval_every = 
+
+    ### Learning rate decay factor used in the GT implementation 
+    decay_factor = 0.99997592083
 
     def __init__(self, output_path=None):
         if output_path:
@@ -75,9 +88,8 @@ class VQAModel(object):
         self.vocab_size = vocab_size
 
         # Add all parts of the graph
-        with tf.variable_scope("VQAModel", initializer=tf.contrib.layers.variance_scaling_initializer(factor=1.0, uniform=True)):
+        with tf.variable_scope("VQAModel"):
             self.add_placeholders()
-            self.add_embedding_layer(emb_matrix)
             self.add_variables()
             self.build_graph()
             self.add_loss()
@@ -86,17 +98,17 @@ class VQAModel(object):
         params = tf.trainable_variables()
         gradients = tf.gradients(self.loss, params)
         self.gradient_norm = tf.global_norm(gradients)
-        clipped_gradients, _ = tf.clip_by_global_norm(gradients, FLAGS.max_gradient_norm)
+        clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.config.max_gradient_norm)
         self.param_norm = tf.global_norm(params)
 
         # Define optimizer and updates
         # (updates is what you need to fetch in session.run to do a gradient update)
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
-        opt = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate) # you can try other optimizers
+        opt = tf.train.AdamOptimizer(learning_rate=self.config.lr)
         self.updates = opt.apply_gradients(zip(clipped_gradients, params), global_step=self.global_step)
 
         # Define savers (for checkpointing) and summaries (for tensorboard)
-        self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.keep)
+        self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=self.config.keep)
         self.bestmodel_saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
         self.summaries = tf.summary.merge_all()
 
@@ -106,12 +118,12 @@ class VQAModel(object):
         add variables of the model to the graph
         
         """
-        self.embed_ques_W =  tf.get_variable("embed_ques_W", tf.random_uniform([self.vocabulary_size, self.input_embedding_size], -0.08, 0.08))
+        self.embed_ques_W =  tf.get_variable("embed_ques_W", tf.random_uniform([self.vocab_size, self.config.input_embed_size], -0.08, 0.08))
 
-        self.lstm_1 = rnn_cell.LSTMCell(rnn_size, input_embedding_size, use_peepholes=True)
+        self.lstm_1 = rnn_cell.LSTMCell(self.config.rnn_size, self.config.input_embed_size, use_peepholes=True)
         self.lstm_dropout_1 = rnn_cell.DropoutWrapper(self.lstm_1, output_keep_prob = self.keep_prob)
         
-        self.lstm_2 = rnn_cell.LSTMCell(rnn_size, rnn_size, use_peepholes=True)
+        self.lstm_2 = rnn_cell.LSTMCell(self.config.rnn_size, self.config.rnn_size, use_peepholes=True)
         self.lstm_dropout_2 = rnn_cell.DropoutWrapper(self.lstm_2, output_keep_prob = self.keep_prob)
         
         self.stacked_lstm = rnn_cell.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
@@ -144,25 +156,19 @@ class VQAModel(object):
         # This is necessary so that we can instruct the model to use dropout when training, but not when testing
         self.keep_prob = tf.placeholder_with_default(1.0, shape=())
 
-    def add_embedding_layer(self):
-        embeddings = tf.nn.embedding_lookup(self.embed_ques_W, self.ques_placeholder)
-        return embeddings
-
     def build_graph(self):
         """Builds the main part of the graph for the model
         """
-        state = tf.zeros([self.batch_size, self.stacked_lstm.state_size])
+        state = tf.zeros([self.config.batch_size, self.stacked_lstm.state_size])
         loss = 0.0
-        for i in range(max_words_q):
+        for i in range(self.config.ques_max_words):
             if i==0:
-            ques_emb_linear = tf.zeros([self.batch_size, self.input_embedding_size])
+                ques_emb_linear = tf.zeros([self.config.batch_size, self.config.input_embed_size])
             else:
                 tf.get_variable_scope().reuse_variables()
-            ques_emb_linear = tf.nn.embedding_lookup(self.embed_ques_W, question[:,i-1])
+                ques_emb_linear = tf.nn.embedding_lookup(self.embed_ques_W, self.ques_placeholder[:,i-1])
 
-            ques_emb_drop = tf.nn.dropout(ques_emb_linear, 1-self.drop_out_rate)
-            ques_emb = tf.tanh(ques_emb_drop)
-
+            ques_emb = tf.tanh(tf.nn.dropout(ques_emb_linear, self.keep_prob))
             output, state = self.stacked_lstm(ques_emb, state)
 
         state_drop = tf.nn.dropout(state, self.keep_prob)
@@ -185,22 +191,6 @@ class VQAModel(object):
         self.loss = tf.reduce_mean(cross_entropy)
         tf.summary.scalar('loss', self.loss)
 
-    def add_training_op(self, loss):
-        """Sets up the training Ops.
-
-        Creates an optimizer and applies the gradients to all trainable variables.
-        The Op returned by this function is what must be passed to the
-        `sess.run()` call to cause the model to train. See
-
-        Args:
-            loss: Loss tensor, from cross_entropy_loss.
-        Returns:
-            train_op: The Op for training.
-        """
-        optimizer = tf.train.AdamOptimizer(self.config.lr)
-        train_op = optimizer.minimize(loss)
-        return train_op
-
     def run_train_iter(self, session, batch, summary_writer):
         """
         This performs a single training iteration (forward pass, loss computation, backprop, parameter update)
@@ -216,12 +206,10 @@ class VQAModel(object):
         """
         # Match up our input data with the placeholders
         input_feed = {}
-        input_feed[self.context_ids] = batch.context_ids
-        input_feed[self.context_mask] = batch.context_mask
-        input_feed[self.qn_ids] = batch.qn_ids
-        input_feed[self.qn_mask] = batch.qn_mask
-        input_feed[self.ans_span] = batch.ans_span
-        input_feed[self.keep_prob] = 1.0 - self.config.dropout # apply dropout
+        input_feed[self.ques_placeholder] = batch["questions"]
+        input_feed[self.labels] = batch["answers"]
+        input_feed[self.image_placeholder] = batch["images"]
+        input_feed[self.keep_prob] = self.config.keep_prob
 
         # output_feed contains the things we want to fetch.
         output_feed = [self.updates, self.summaries, self.loss, self.global_step, self.param_norm, self.gradient_norm]
@@ -234,76 +222,12 @@ class VQAModel(object):
 
         return loss, global_step, param_norm, gradient_norm
 
-
-    def get_loss(self, session, batch):
-        """
-        Run forward-pass only; get loss.
-        Inputs:
-          session: TensorFlow session
-          batch: a Batch object
-        Returns:
-          loss: The loss (averaged across the batch) for this batch
-        """
-
-        input_feed = {}
-        input_feed[self.context_ids] = batch.context_ids
-        input_feed[self.context_mask] = batch.context_mask
-        input_feed[self.qn_ids] = batch.qn_ids
-        input_feed[self.qn_mask] = batch.qn_mask
-        input_feed[self.ans_span] = batch.ans_span
-        # note you don't supply keep_prob here, so it will default to 1 i.e. no dropout
-
-        output_feed = [self.loss]
-
-        [loss] = session.run(output_feed, input_feed)
-
-        return loss
-
-    def get_dev_loss(self, session, dev_context_path, dev_qn_path, dev_ans_path):
-        """
-        Get loss for entire dev set.
-        Inputs:
-          session: TensorFlow session
-          dev_qn_path, dev_context_path, dev_ans_path: paths to the dev.{context/question/answer} data files
-        Outputs:
-          dev_loss: float. Average loss across the dev set.
-        """
-        logging.info("Calculating dev loss...")
-        tic = time.time()
-        loss_per_batch, batch_lengths = [], []
-
-        # Iterate over dev set batches
-        # Note: here we set discard_long=True, meaning we discard any examples
-        # which are longer than our context_len or question_len.
-        # We need to do this because if, for example, the true answer is cut
-        # off the context, then the loss function is undefined.
-        for batch in get_batch_generator(self.word2id, dev_context_path, dev_qn_path, dev_ans_path, self.FLAGS.batch_size, context_len=self.FLAGS.context_len, question_len=self.FLAGS.question_len, discard_long=True):
-
-            # Get loss for this batch
-            loss = self.get_loss(session, batch)
-            curr_batch_size = batch.batch_size
-            loss_per_batch.append(loss * curr_batch_size)
-            batch_lengths.append(curr_batch_size)
-
-        # Calculate average loss
-        total_num_examples = sum(batch_lengths)
-        toc = time.time()
-        print "Computed dev loss over %i examples in %.2f seconds" % (total_num_examples, toc-tic)
-
-        # Overall loss is total loss divided by total number of examples
-        dev_loss = sum(loss_per_batch) / float(total_num_examples)
-
-        return dev_loss
-
-
-    def train(self, session, train_context_path, train_qn_path, train_ans_path, dev_qn_path, dev_context_path, dev_ans_path):
+    def train(self, session, dataset, img_features, train_data):
         """
         Main training loop.
         Inputs:
           session: TensorFlow session
         """
-
-        config = Config()
 
         tic = time.time()
 
@@ -313,27 +237,24 @@ class VQAModel(object):
         toc = time.time()
         logging.info("Number of params: %d (retrieval took %f secs)" % (num_params, toc - tic))
 
-        # We will keep track of exponentially-smoothed loss
-        exp_loss = None
-
         # Checkpoint management.
         # We keep one latest checkpoint, and one best checkpoint (early stopping)
-        checkpoint_path = os.path.join(self.config.train_dir, "vqa.ckpt")
-        bestmodel_dir = os.path.join(self.config.train_dir, "best_checkpoint")
+        checkpoint_path = os.path.join(self.config.output_path, "vqa.ckpt")
+        bestmodel_dir = os.path.join(self.config.output_path, "best_checkpoint")
         bestmodel_ckpt_path = os.path.join(bestmodel_dir, "vqa_best.ckpt")
 
         # for TensorBoard
-        summary_writer = tf.summary.FileWriter(self.config.train_dir, session.graph)
+        summary_writer = tf.summary.FileWriter(self.config.output_path, session.graph)
 
         epoch = 0
 
         logging.info("Beginning training loop...")
-        while epoch < self.config.n_epochs:
+        while epoch < self.config.max_iterations:
             epoch += 1
             epoch_tic = time.time()
 
             # Loop over batches
-            for batch in minibatches()
+            for batch in makebatches(config.batch_size, img_features, train_data)
 
                 # Run training iteration
                 iter_tic = time.time()
@@ -342,18 +263,18 @@ class VQAModel(object):
                 iter_time = iter_toc - iter_tic
 
                 # Sometimes print info to screen
-                if global_step % self.FLAGS.print_every == 0:
+                if global_step % self.config.print_every == 0:
                     logging.info(
-                        'epoch %d, iter %d, loss %.5f, smoothed loss %.5f, grad norm %.5f, param norm %.5f, batch time %.3f' %
-                        (epoch, global_step, loss, exp_loss, grad_norm, param_norm, iter_time))
+                        'epoch %d, iter %d, loss %.5f, grad norm %.5f, param norm %.5f, batch time %.3f' %
+                        (epoch, global_step, loss, grad_norm, param_norm, iter_time))
 
                 # Sometimes save model
-                if global_step % self.FLAGS.save_every == 0:
+                if global_step % self.config.save_checkpoint_every == 0:
                     logging.info("Saving to %s..." % checkpoint_path)
                     self.saver.save(session, checkpoint_path, global_step=global_step)
 
                 # Sometimes evaluate model on dev loss, train F1/EM and dev F1/EM
-                if global_step % self.FLAGS.eval_every == 0:
+                if global_step % self.config.eval_every == 0:
 
                     # Get loss for entire dev set and log to tensorboard
                     dev_loss = self.get_dev_loss(session, dev_context_path, dev_qn_path, dev_ans_path)
@@ -392,3 +313,38 @@ def write_summary(value, tag, summary_writer, global_step):
     summary = tf.Summary()
     summary.value.add(tag=tag, simple_value=value)
     summary_writer.add_summary(summary, global_step)
+
+
+if __name__ == '__main__':
+
+    config = Config()
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(config.gpu_id)
+
+    # Some GPU settings
+    gpu_config=tf.ConfigProto()
+    gpu_config.gpu_options.allow_growth = True
+
+    # create a directory for best checkpoint if it does not exist
+    bestmodel_dir = os.path.join(config.output_path, "/best_checkpoint")
+
+    if not os.path.exists(config.output_path):
+            os.makedirs(config.output_path)
+    file_handler = logging.FileHandler(os.path.join(config.output_path, "/log.txt"))
+    logging.getLogger().addHandler(file_handler)
+
+    print("Loading dataset")
+    dataset, img_features, train_data = get_data(config)
+    vocab_size = len(dataset['ix_to_word'].keys())
+
+    ### Train
+    with tf.Session(config=gpu_config) as sess:
+
+            vqa_model = VQAModel(config, vocab_size)
+            # Train
+            vqa_model.train(sess, dataset, img_features, train_data)
+
+    ### Test
+
+
+    

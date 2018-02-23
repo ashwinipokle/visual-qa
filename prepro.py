@@ -2,6 +2,11 @@
 Preprocess a raw json dataset into hdf5/json files.
 
 Caption: Use spaCy or NLTK or split function to get tokens. 
+
+Code for preprocessing has been sourced from the following github repository
+
+https://github.com/GT-Vision-Lab/VQA_LSTM_CNN/
+
 """
 import copy
 from random import shuffle, seed
