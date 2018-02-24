@@ -138,7 +138,7 @@ class VQAModel(object):
         self.embed_image_b = tf.get_variable('embed_image_b', shape=[self.config.common_embed_size], initializer=random_initializer)
         
         # score-embedding
-        self.embed_score_W = tf.get_variable('embed_score_W', shape=[self.config.hidden_size, self.config.common_embed_size], intializer=random_initializer)
+        self.embed_score_W = tf.get_variable('embed_score_W', shape=[self.config.common_embed_size, self.config.common_embed_size], initializer=random_initializer)
         self.embed_score_b = tf.get_variable('embed_score_b', shape=[self.config.common_embed_size], initializer=random_initializer)
 
     def add_placeholders(self):
@@ -159,7 +159,7 @@ class VQAModel(object):
     def build_graph(self):
         """Builds the main part of the graph for the model
         """
-        state = tf.zeros([self.config.batch_size, self.stacked_lstm.state_size])
+        state = self.stacked_lstm.zero_state(self.config.batch_size, tf.float32)
         loss = 0.0
         for i in range(self.config.ques_max_words):
             if i==0:
