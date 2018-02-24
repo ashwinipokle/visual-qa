@@ -90,8 +90,8 @@ class VQAModel(object):
         with tf.variable_scope("VQAModel"):
             self.add_placeholders()
             self.add_variables()
-            self.build_graph()
-            self.add_loss()
+            scores_emb = self.build_graph()
+            self.add_loss(scores_emb)
 
         # Define trainable parameters, gradient, gradient norm, and clip by gradient norm
         params = tf.trainable_variables()
@@ -184,7 +184,7 @@ class VQAModel(object):
         image_emb = tf.tanh(tf.matmul(image_drop, self.embed_image_W)+ self.embed_image_b)
 
         # fuse question & image
-        scores = tf.mul(state_emb, image_emb)
+        scores = tf.matmul(state_emb, image_emb)
         scores_drop = tf.nn.dropout(scores, self.keep_prob)
         scores_emb = tf.matmul(scores_drop, self.embed_score_W) + self.embed_score_b
         return scores_emb
