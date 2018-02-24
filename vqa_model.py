@@ -173,6 +173,11 @@ class VQAModel(object):
 
         state_drop = tf.nn.dropout(state, self.keep_prob)
         print tf.shape(state_drop)
+        state_drop = tf.transpose(state_drop, [2,0,1,3])#get batch size first
+        state_drop = tf.reshape(state_drop, [self.config.batch_size,-1] )
+        print tf.shape(state_drop)
+        print tf.shape(self.embed_state_W)
+        print (tf.shape(self.embed_state_bs))
         state_emb = tf.tanh(tf.matmul(state_drop, self.embed_state_W) + self.embed_state_b)
 
         image_drop = tf.nn.dropout(image, self.keep_prob)
