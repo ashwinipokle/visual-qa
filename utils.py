@@ -106,14 +106,21 @@ def get_data_test(config):
 
 def makebatches(batch_size, img_features, train_data):
     num_train = train_data['question'].shape[0]
-    indices = np.random.random_integers(0, num_train-2, batch_size)
+    indices = np.random.random_integers(0, num_train-1, batch_size)
 
     current_questions = train_data['question'][indices,:]
     
     current_answers = train_data['answers'][indices]
 
     current_image_list = train_data['img_list'][indices]
+
+    if len(img_features) in current_image_list:
+        len_indices = [i for i, x in enumerate(current_image_list) if x == img_features_len]
+        for idx in len_indices:
+            current_image_list[idx] -= 1
+
     current_images = img_features[current_image_list,:]
+
     batch = {}
     batch["questions"] = current_questions
     batch["answers"] = current_answers
