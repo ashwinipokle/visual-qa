@@ -87,7 +87,7 @@ class VQAModel(object):
         self.vocab_size = vocab_size
 
         # Add all parts of the graph
-        with tf.variable_scope("VQAModel"):
+        with tf.variable_scope("VQAModel", initializer=tf.contrib.layers.variance_scaling_initializer(factor=1.0, uniform=True)):
             self.add_placeholders()
             self.add_variables()
             scores_emb = self.build_graph()
@@ -103,6 +103,7 @@ class VQAModel(object):
         # Define optimizer and updates
         # (updates is what you need to fetch in session.run to do a gradient update)
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
+        
         opt = tf.train.AdamOptimizer(learning_rate=self.config.lr)
         self.updates = opt.apply_gradients(zip(clipped_gradients, params), global_step=self.global_step)
 
@@ -172,12 +173,10 @@ class VQAModel(object):
             output, state = self.stacked_lstm(ques_emb, state)
 
         state_drop = tf.nn.dropout(state, self.keep_prob)
-        print tf.shape(state_drop)
+
         state_drop = tf.transpose(state_drop, [2,0,1,3])#get batch size first
         state_drop = tf.reshape(state_drop, [self.config.batch_size,-1] )
-        print tf.shape(state_drop)
-        print tf.shape(self.embed_state_W)
-        print (tf.shape(self.embed_state_b))
+
         state_emb = tf.tanh(tf.matmul(state_drop, self.embed_state_W) + self.embed_state_b)
 
         image_drop = tf.nn.dropout(self.image_placeholder, self.keep_prob)
@@ -211,7 +210,6 @@ class VQAModel(object):
           gradient_norm: Global norm of the gradients
         """
         # Match up our input data with the placeholders
-        print "Batch", batch
         input_feed = {}
         input_feed[self.ques_placeholder] = batch["questions"]
         input_feed[self.labels] = batch["answers"]
@@ -261,7 +259,7 @@ class VQAModel(object):
             epoch_tic = time.time()
 
             # Loop over batches
-            batch = makebatches(config.batch_size, img_features, train_data):
+            batch = makebatches(config.batch_size, img_features, train_data)
 
             # Run training iteration
             iter_tic = time.time()
@@ -348,10 +346,11 @@ if __name__ == '__main__':
     dataset, img_features, train_data = get_data(config)
     vocab_size = len(dataset['ix_to_word'].keys())
 
+    vqa_model = VQAModel(config, vocab_size)
+    #init = tf.global_variables_initializer()
+
     ### Train
     with tf.Session(config=gpu_config) as sess:
-
-            vqa_model = VQAModel(config, vocab_size)
             # Train
             vqa_model.train(sess, dataset, img_features, train_data)
 
