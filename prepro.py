@@ -22,7 +22,7 @@ import string
 import h5py
 from nltk.tokenize import word_tokenize
 import json
-import spacy.en 
+#import spacy.en 
 
 import re
 

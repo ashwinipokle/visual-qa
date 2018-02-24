@@ -1,3 +1,7 @@
 numpy
 scipy
 tensorflow
+nltk
+h5py
+imread
+pillow

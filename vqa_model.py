@@ -4,12 +4,12 @@ import os
 import sys
 import h5py
 import argparse
+from datetime import datetime
 
-import utils
+from utils import *
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.models.rnn import rnn_cell
 
 logging.basicConfig(level=logging.INFO)
 
@@ -119,13 +119,13 @@ class VQAModel(object):
         """
         self.embed_ques_W =  tf.get_variable("embed_ques_W", tf.random_uniform([self.vocab_size, self.config.input_embed_size], -0.08, 0.08))
 
-        self.lstm_1 = rnn_cell.LSTMCell(self.config.rnn_size, self.config.input_embed_size, use_peepholes=True)
-        self.lstm_dropout_1 = rnn_cell.DropoutWrapper(self.lstm_1, output_keep_prob = self.keep_prob)
+        self.lstm_1 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, self.config.input_embed_size, use_peepholes=True)
+        self.lstm_dropout_1 = tf.nn.rnn_cell.DropoutWrapper(self.lstm_1, output_keep_prob = self.keep_prob)
         
-        self.lstm_2 = rnn_cell.LSTMCell(self.config.rnn_size, self.config.rnn_size, use_peepholes=True)
-        self.lstm_dropout_2 = rnn_cell.DropoutWrapper(self.lstm_2, output_keep_prob = self.keep_prob)
+        self.lstm_2 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, self.config.rnn_size, use_peepholes=True)
+        self.lstm_dropout_2 = tf.nn.rnn_cell.DropoutWrapper(self.lstm_2, output_keep_prob = self.keep_prob)
         
-        self.stacked_lstm = rnn_cell.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
+        self.stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
 
         # state-embedding
         random_embed_initializer = tf.random_uniform([2 * self.config.rnn_size * self.config.rnn_layer, self.config.common_embed_size], -0.08, 0.08)
@@ -171,7 +171,7 @@ class VQAModel(object):
             output, state = self.stacked_lstm(ques_emb, state)
 
         state_drop = tf.nn.dropout(state, self.keep_prob)
-        state_emb = tf.tanh(tf.matmul(state_drop, self.embed_state_W). + self.embed_state_b)
+        state_emb = tf.tanh(tf.matmul(state_drop, self.embed_state_W) + self.embed_state_b)
 
         image_drop = tf.nn.dropout(image, self.keep_prob)
         image_emb = tf.tanh(tf.matmul(image_drop, self.embed_image_W, self.embed_image_b))
@@ -253,7 +253,7 @@ class VQAModel(object):
             epoch_tic = time.time()
 
             # Loop over batches
-            for batch in makebatches(config.batch_size, img_features, train_data)
+            for batch in makebatches(config.batch_size, img_features, train_data):
 
                 # Run training iteration
                 iter_tic = time.time()
@@ -325,11 +325,14 @@ if __name__ == '__main__':
     gpu_config.gpu_options.allow_growth = True
 
     # create a directory for best checkpoint if it does not exist
-    bestmodel_dir = os.path.join(config.output_path, "/best_checkpoint")
+    bestmodel_dir = os.path.join(config.output_path, "best_checkpoint")
 
     if not os.path.exists(config.output_path):
             os.makedirs(config.output_path)
-    file_handler = logging.FileHandler(os.path.join(config.output_path, "/log.txt"))
+            os.makedirs(config.log_output)
+    
+    print("Output path", config.log_output)
+    file_handler = logging.FileHandler(os.path.join(config.log_output, "log.txt"))
     logging.getLogger().addHandler(file_handler)
 
     print("Loading dataset")
