@@ -180,7 +180,7 @@ class VQAModel(object):
         print (tf.shape(self.embed_state_b))
         state_emb = tf.tanh(tf.matmul(state_drop, self.embed_state_W) + self.embed_state_b)
 
-        image_drop = tf.nn.dropout(image, self.keep_prob)
+        image_drop = tf.nn.dropout(self.image_placeholder, self.keep_prob)
         image_emb = tf.tanh(tf.matmul(image_drop, self.embed_image_W, self.embed_image_b))
 
         # fuse question & image
