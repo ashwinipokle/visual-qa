@@ -120,10 +120,10 @@ class VQAModel(object):
         random_initializer = tf.random_uniform_initializer(-0.08, 0.08)
         self.embed_ques_W =  tf.get_variable("embed_ques_W", shape=[self.vocab_size, self.config.input_embed_size], initializer=random_initializer)
 
-        self.lstm_1 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, self.config.input_embed_size, use_peepholes=True)
+        self.lstm_1 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, use_peepholes=True)
         self.lstm_dropout_1 = tf.nn.rnn_cell.DropoutWrapper(self.lstm_1, output_keep_prob = self.keep_prob)
         
-        self.lstm_2 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, self.config.rnn_size, use_peepholes=True)
+        self.lstm_2 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, use_peepholes=True)
         self.lstm_dropout_2 = tf.nn.rnn_cell.DropoutWrapper(self.lstm_2, output_keep_prob = self.keep_prob)
         
         self.stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
