@@ -211,6 +211,7 @@ class VQAModel(object):
           gradient_norm: Global norm of the gradients
         """
         # Match up our input data with the placeholders
+        print "Batch", batch
         input_feed = {}
         input_feed[self.ques_placeholder] = batch["questions"]
         input_feed[self.labels] = batch["answers"]
@@ -260,53 +261,53 @@ class VQAModel(object):
             epoch_tic = time.time()
 
             # Loop over batches
-            for batch in makebatches(config.batch_size, img_features, train_data):
+            batch = makebatches(config.batch_size, img_features, train_data):
 
-                # Run training iteration
-                iter_tic = time.time()
-                loss, global_step, param_norm, grad_norm = self.run_train_iter(session, batch, summary_writer)
-                iter_toc = time.time()
-                iter_time = iter_toc - iter_tic
+            # Run training iteration
+            iter_tic = time.time()
+            loss, global_step, param_norm, grad_norm = self.run_train_iter(session, batch, summary_writer)
+            iter_toc = time.time()
+            iter_time = iter_toc - iter_tic
 
-                # Sometimes print info to screen
-                if global_step % self.config.print_every == 0:
-                    logging.info(
-                        'epoch %d, iter %d, loss %.5f, grad norm %.5f, param norm %.5f, batch time %.3f' %
-                        (epoch, global_step, loss, grad_norm, param_norm, iter_time))
+            # Sometimes print info to screen
+            if global_step % self.config.print_every == 0:
+                logging.info(
+                    'epoch %d, iter %d, loss %.5f, grad norm %.5f, param norm %.5f, batch time %.3f' %
+                    (epoch, global_step, loss, grad_norm, param_norm, iter_time))
 
-                # Sometimes save model
-                if global_step % self.config.save_checkpoint_every == 0:
-                    logging.info("Saving to %s..." % checkpoint_path)
-                    self.saver.save(session, checkpoint_path, global_step=global_step)
+            # Sometimes save model
+            if global_step % self.config.save_checkpoint_every == 0:
+                logging.info("Saving to %s..." % checkpoint_path)
+                self.saver.save(session, checkpoint_path, global_step=global_step)
 
-                # Sometimes evaluate model on dev loss, train F1/EM and dev F1/EM
-                # if global_step % self.config.eval_every == 0:
+            # Sometimes evaluate model on dev loss, train F1/EM and dev F1/EM
+            # if global_step % self.config.eval_every == 0:
 
-                #     # Get loss for entire dev set and log to tensorboard
-                #     dev_loss = self.get_dev_loss(session, dev_context_path, dev_qn_path, dev_ans_path)
-                #     logging.info("Epoch %d, Iter %d, dev loss: %f" % (epoch, global_step, dev_loss))
-                #     write_summary(dev_loss, "dev/loss", summary_writer, global_step)
-
-
-                #     # Get F1/EM on train set and log to tensorboard
-                #     train_f1, train_em = self.check_f1_em(session, train_context_path, train_qn_path, train_ans_path, "train", num_samples=1000)
-                #     logging.info("Epoch %d, Iter %d, Train F1 score: %f, Train EM score: %f" % (epoch, global_step, train_f1, train_em))
-                #     write_summary(train_f1, "train/F1", summary_writer, global_step)
-                #     write_summary(train_em, "train/EM", summary_writer, global_step)
+            #     # Get loss for entire dev set and log to tensorboard
+            #     dev_loss = self.get_dev_loss(session, dev_context_path, dev_qn_path, dev_ans_path)
+            #     logging.info("Epoch %d, Iter %d, dev loss: %f" % (epoch, global_step, dev_loss))
+            #     write_summary(dev_loss, "dev/loss", summary_writer, global_step)
 
 
-                #     # Get F1/EM on dev set and log to tensorboard
-                #     dev_f1, dev_em = self.check_f1_em(session, dev_context_path, dev_qn_path, dev_ans_path, "dev", num_samples=0)
-                #     logging.info("Epoch %d, Iter %d, Dev F1 score: %f, Dev EM score: %f" % (epoch, global_step, dev_f1, dev_em))
-                #     write_summary(dev_f1, "dev/F1", summary_writer, global_step)
-                #     write_summary(dev_em, "dev/EM", summary_writer, global_step)
+            #     # Get F1/EM on train set and log to tensorboard
+            #     train_f1, train_em = self.check_f1_em(session, train_context_path, train_qn_path, train_ans_path, "train", num_samples=1000)
+            #     logging.info("Epoch %d, Iter %d, Train F1 score: %f, Train EM score: %f" % (epoch, global_step, train_f1, train_em))
+            #     write_summary(train_f1, "train/F1", summary_writer, global_step)
+            #     write_summary(train_em, "train/EM", summary_writer, global_step)
 
 
-                #     # Early stopping based on dev EM. You could switch this to use F1 instead.
-                #     if best_dev_em is None or dev_em > best_dev_em:
-                #         best_dev_em = dev_em
-                #         logging.info("Saving to %s..." % bestmodel_ckpt_path)
-                #         self.bestmodel_saver.save(session, bestmodel_ckpt_path, global_step=global_step)
+            #     # Get F1/EM on dev set and log to tensorboard
+            #     dev_f1, dev_em = self.check_f1_em(session, dev_context_path, dev_qn_path, dev_ans_path, "dev", num_samples=0)
+            #     logging.info("Epoch %d, Iter %d, Dev F1 score: %f, Dev EM score: %f" % (epoch, global_step, dev_f1, dev_em))
+            #     write_summary(dev_f1, "dev/F1", summary_writer, global_step)
+            #     write_summary(dev_em, "dev/EM", summary_writer, global_step)
+
+
+            #     # Early stopping based on dev EM. You could switch this to use F1 instead.
+            #     if best_dev_em is None or dev_em > best_dev_em:
+            #         best_dev_em = dev_em
+            #         logging.info("Saving to %s..." % bestmodel_ckpt_path)
+            #         self.bestmodel_saver.save(session, bestmodel_ckpt_path, global_step=global_step)
 
 
             epoch_toc = time.time()
