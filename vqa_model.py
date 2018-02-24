@@ -117,7 +117,6 @@ class VQAModel(object):
     add variables of the model to the graph
     
     """
-
         random_initializer = tf.random_uniform_initializer(-0.08, 0.08)
         self.embed_ques_W =  tf.get_variable("embed_ques_W", shape=[self.vocab_size, self.config.input_embed_size], initializer=random_initializer)
 
