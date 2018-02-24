@@ -87,11 +87,12 @@ class VQAModel(object):
         self.vocab_size = vocab_size
 
         # Add all parts of the graph
-        with tf.variable_scope("VQAModel", initializer=tf.contrib.layers.variance_scaling_initializer(factor=1.0, uniform=True)):
+        with tf.variable_scope("VQAModel"):
             self.add_placeholders()
             self.add_variables()
             scores_emb = self.build_graph()
-            self.add_loss(scores_emb)
+        
+        self.add_loss(scores_emb)
 
         # Define trainable parameters, gradient, gradient norm, and clip by gradient norm
         params = tf.trainable_variables()
@@ -118,29 +119,30 @@ class VQAModel(object):
         add variables of the model to the graph
         
         """
-        random_initializer = tf.random_uniform_initializer(-0.08, 0.08)
-        self.embed_ques_W =  tf.get_variable("embed_ques_W", shape=[self.vocab_size, self.config.input_embed_size], initializer=random_initializer)
+        with tf.variable_scope("VQAModel"):
+            random_initializer = tf.random_uniform_initializer(-0.08, 0.08)
+            self.embed_ques_W =  tf.get_variable("embed_ques_W", shape=[self.vocab_size, self.config.input_embed_size], initializer=random_initializer)
 
-        self.lstm_1 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, use_peepholes=True)
-        self.lstm_dropout_1 = tf.nn.rnn_cell.DropoutWrapper(self.lstm_1, output_keep_prob = self.keep_prob)
-        
-        self.lstm_2 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, use_peepholes=True)
-        self.lstm_dropout_2 = tf.nn.rnn_cell.DropoutWrapper(self.lstm_2, output_keep_prob = self.keep_prob)
-        
-        self.stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
+            self.lstm_1 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, use_peepholes=True)
+            self.lstm_dropout_1 = tf.nn.rnn_cell.DropoutWrapper(self.lstm_1, output_keep_prob = self.keep_prob)
+            
+            self.lstm_2 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, use_peepholes=True)
+            self.lstm_dropout_2 = tf.nn.rnn_cell.DropoutWrapper(self.lstm_2, output_keep_prob = self.keep_prob)
+            
+            self.stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
 
-        # state-embedding
-   
-        self.embed_state_W = tf.get_variable('embed_state_W', shape=[2 * self.config.rnn_size * self.config.rnn_layer, self.config.common_embed_size], initializer=random_initializer)
-        self.embed_state_b = tf.get_variable('embed_state_b', shape=[self.config.common_embed_size], initializer=random_initializer)
-        
-        # image-embedding
-        self.embed_image_W = tf.get_variable('embed_image_W', shape=[self.config.image_size, self.config.common_embed_size], initializer=random_initializer)
-        self.embed_image_b = tf.get_variable('embed_image_b', shape=[self.config.common_embed_size], initializer=random_initializer)
-        
-        # score-embedding
-        self.embed_score_W = tf.get_variable('embed_score_W', shape=[self.config.common_embed_size, self.config.common_embed_size], initializer=random_initializer)
-        self.embed_score_b = tf.get_variable('embed_score_b', shape=[self.config.common_embed_size], initializer=random_initializer)
+            # state-embedding
+       
+            self.embed_state_W = tf.get_variable('embed_state_W', shape=[2 * self.config.rnn_size * self.config.rnn_layer, self.config.common_embed_size], initializer=random_initializer)
+            self.embed_state_b = tf.get_variable('embed_state_b', shape=[self.config.common_embed_size], initializer=random_initializer)
+            
+            # image-embedding
+            self.embed_image_W = tf.get_variable('embed_image_W', shape=[self.config.image_size, self.config.common_embed_size], initializer=random_initializer)
+            self.embed_image_b = tf.get_variable('embed_image_b', shape=[self.config.common_embed_size], initializer=random_initializer)
+            
+            # score-embedding
+            self.embed_score_W = tf.get_variable('embed_score_W', shape=[self.config.common_embed_size, self.config.common_embed_size], initializer=random_initializer)
+            self.embed_score_b = tf.get_variable('embed_score_b', shape=[self.config.common_embed_size], initializer=random_initializer)
 
     def add_placeholders(self):
         """
