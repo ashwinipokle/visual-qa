@@ -115,7 +115,7 @@ def makebatches(batch_size, img_features, train_data):
     current_image_list = train_data['img_list'][indices]
 
     if len(img_features) in current_image_list:
-        len_indices = [i for i, x in enumerate(current_image_list) if x == img_features_len]
+        len_indices = [i for i, x in enumerate(current_image_list) if x == len(img_features)]
         for idx in len_indices:
             current_image_list[idx] -= 1
 

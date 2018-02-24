@@ -34,7 +34,7 @@ class Config():
 
     batch_size = 500
 
-    max_iterations = 20
+    max_iterations = 50000
 
     lr = 0.0003
 
@@ -43,7 +43,7 @@ class Config():
     gpu_id = 0
 
     ### checkpoints
-    save_checkpoint_every = 10
+    save_checkpoint_every = 5000
 
     ### number of checkpoints to keep
     keep = 1
@@ -106,7 +106,7 @@ class VQAModel(object):
         # (updates is what you need to fetch in session.run to do a gradient update)
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
         
-        with tf.variable_scope(tf.get_variable_scope(),reuse=False):
+        with tf.variable_scope(tf.get_variable_scope()):
             opt = tf.train.AdamOptimizer(learning_rate=self.config.lr)
             self.updates = opt.apply_gradients(zip(clipped_gradients, params), global_step=self.global_step)
 
@@ -219,7 +219,7 @@ class VQAModel(object):
 
         # Run the model
         [_, summaries, loss, global_step, param_norm, gradient_norm] = session.run(output_feed, input_feed)
-        self.lr = self.lr*self.config.decay_factor
+        self.config.lr = self.config.lr*self.config.decay_factor
 
         # All summaries in the graph are added to Tensorboard
         summary_writer.add_summary(summaries, global_step)
