@@ -92,8 +92,7 @@ class VQAModel(object):
             self.add_variables()
             scores_emb = self.build_graph()
         
-        self.add_loss(scores_emb)
-
+	self.add_loss(scores_emb)
         # Define trainable parameters, gradient, gradient norm, and clip by gradient norm
         params = tf.trainable_variables()
         gradients = tf.gradients(self.loss, params)

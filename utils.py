@@ -106,7 +106,7 @@ def get_data_test(config):
 
 def makebatches(batch_size, img_features, train_data):
     num_train = train_data['question'].shape[0]
-    indices = np.random.random_integers(0, num_train-1, batch_size)
+    indices = np.random.random_integers(0, num_train-2, batch_size)
 
     current_questions = train_data['question'][indices,:]
     
@@ -114,11 +114,11 @@ def makebatches(batch_size, img_features, train_data):
 
     current_image_list = train_data['img_list'][indices]
     current_images = img_features[current_image_list,:]
-
     batch = {}
     batch["questions"] = current_questions
     batch["answers"] = current_answers
     batch["images"] = current_images
+    #print "Returning batch", batch
     return batch
 
 def right_align(seq, lengths):
