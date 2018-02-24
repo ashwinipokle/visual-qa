@@ -117,7 +117,8 @@ class VQAModel(object):
         add variables of the model to the graph
         
         """
-        self.embed_ques_W =  tf.get_variable("embed_ques_W", tf.random_uniform([self.vocab_size, self.config.input_embed_size], -0.08, 0.08))
+        random_initializer = tf.random_uniform_initializer(-0.08, 0.08)
+        self.embed_ques_W =  tf.get_variable("embed_ques_W", shape=[self.vocab_size, self.config.input_embed_size], initializer=random_initializer)
 
         self.lstm_1 = tf.nn.rnn_cell.LSTMCell(self.config.rnn_size, self.config.input_embed_size, use_peepholes=True)
         self.lstm_dropout_1 = tf.nn.rnn_cell.DropoutWrapper(self.lstm_1, output_keep_prob = self.keep_prob)
@@ -128,7 +129,7 @@ class VQAModel(object):
         self.stacked_lstm = tf.nn.rnn_cell.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
 
         # state-embedding
-        random_initializer = tf.random_uniform_initializer(-0.08, 0.08)
+   
         self.embed_state_W = tf.get_variable('embed_state_W', shape=[2 * self.config.rnn_size * self.config.rnn_layer, self.config.common_embed_size], initializer=random_initializer)
         self.embed_state_b = tf.get_variable('embed_state_b', shape=[self.config.common_embed_size], initializer=random_initializer)
         
