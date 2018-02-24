@@ -181,7 +181,7 @@ class VQAModel(object):
         image_emb = tf.tanh(tf.matmul(image_drop, self.embed_image_W)+ self.embed_image_b)
 
         # fuse question & image
-        scores = tf.matmul(state_emb, image_emb)
+        scores = tf.multiply(state_emb, image_emb)
         scores_drop = tf.nn.dropout(scores, self.keep_prob)
         scores_emb = tf.matmul(scores_drop, self.embed_score_W) + self.embed_score_b
         return scores_emb
@@ -345,10 +345,11 @@ if __name__ == '__main__':
     vocab_size = len(dataset['ix_to_word'].keys())
 
     vqa_model = VQAModel(config, vocab_size)
-    #init = tf.global_variables_initializer()
+    init = tf.global_variables_initializer()
 
     ### Train
     with tf.Session(config=gpu_config) as sess:
+            sess.run(init)
             # Train
             vqa_model.train(sess, dataset, img_features, train_data)
 
