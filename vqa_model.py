@@ -172,6 +172,7 @@ class VQAModel(object):
             output, state = self.stacked_lstm(ques_emb, state)
 
         state_drop = tf.nn.dropout(state, self.keep_prob)
+        print tf.shape(state_drop)
         state_emb = tf.tanh(tf.matmul(state_drop, self.embed_state_W) + self.embed_state_b)
 
         image_drop = tf.nn.dropout(image, self.keep_prob)
