@@ -33,8 +33,8 @@ class Config():
     num_output = 1000    #number of output answers
 
     batch_size = 500
-    n_epochs = 300
-    max_iterations = 150000
+
+    max_iterations = 20
 
     lr = 0.0003
 
@@ -43,7 +43,7 @@ class Config():
     gpu_id = 0
 
     ### checkpoints
-    save_checkpoint_every = 15000
+    save_checkpoint_every = 10
 
     ### number of checkpoints to keep
     keep = 1
@@ -219,6 +219,7 @@ class VQAModel(object):
 
         # Run the model
         [_, summaries, loss, global_step, param_norm, gradient_norm] = session.run(output_feed, input_feed)
+        self.lr = self.lr*self.config.decay_factor
 
         # All summaries in the graph are added to Tensorboard
         summary_writer.add_summary(summaries, global_step)
@@ -345,7 +346,7 @@ if __name__ == '__main__':
     vocab_size = len(dataset['ix_to_word'].keys())
 
     vqa_model = VQAModel(config, vocab_size)
-    #init = tf.global_variables_initializer()
+    init = tf.global_variables_initializer()
 
     ### Train
     with tf.Session(config=gpu_config) as sess:
