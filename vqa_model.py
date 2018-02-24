@@ -92,7 +92,6 @@ class VQAModel(object):
             self.add_variables()
             scores_emb = self.build_graph()
             self.add_loss(scores_emb)
-            tf.get_variable_scope().reuse_variables()
         
         # Define trainable parameters, gradient, gradient norm, and clip by gradient norm
         params = tf.trainable_variables()
@@ -149,7 +148,7 @@ class VQAModel(object):
         # allows you to run the same model with variable batch_size
         self.image_placeholder = tf.placeholder(tf.float32, shape=[None, self.config.image_size])
         self.ques_placeholder = tf.placeholder(tf.int32, shape=[None, self.config.ques_max_words])
-        self.labels = tf.placeholder(tf.int32, shape=[None,])
+        self.labels = tf.placeholder(tf.int64, shape=[None,])
 
         # Add a placeholder to feed in the keep probability (for dropout).
         # This is necessary so that we can instruct the model to use dropout when training, but not when testing
@@ -169,15 +168,15 @@ class VQAModel(object):
             ques_emb = tf.tanh(tf.nn.dropout(ques_emb_linear, self.keep_prob))
             output, state = self.stacked_lstm(ques_emb, state)
 
+        state = tf.transpose(state, [2,0,1,3]) #get batch size first
+        state = tf.reshape(state, [self.config.batch_size,-1] )
+        
         state_drop = tf.nn.dropout(state, self.keep_prob)
-
-        state_drop = tf.transpose(state_drop, [2,0,1,3])#get batch size first
-        state_drop = tf.reshape(state_drop, [self.config.batch_size,-1] )
 
         state_emb = tf.tanh(tf.matmul(state_drop, self.embed_state_W) + self.embed_state_b)
 
         image_drop = tf.nn.dropout(self.image_placeholder, self.keep_prob)
-        image_emb = tf.tanh(tf.matmul(image_drop, self.embed_image_W)+ self.embed_image_b)
+        image_emb = tf.tanh(tf.matmul(image_drop, self.embed_image_W) + self.embed_image_b)
 
         # fuse question & image
         scores = tf.multiply(state_emb, image_emb)
