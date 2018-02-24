@@ -13,7 +13,7 @@ from tensorflow.models.rnn import rnn_cell
 
 logging.basicConfig(level=logging.INFO)
 
-class Config:
+class Config():
     """Holds model hyperparams and data information.
 
     The config class is used to store various hyperparameters and dataset
@@ -55,8 +55,7 @@ class Config:
     max_gradient_norm = 10.0
 
     #### other
-    print_every = 100
-    eval_every = 
+    print_every = 10
 
     ### Learning rate decay factor used in the GT implementation 
     decay_factor = 0.99997592083
@@ -175,7 +174,7 @@ class VQAModel(object):
         state_emb = tf.tanh(tf.matmul(state_drop, self.embed_state_W). + self.embed_state_b)
 
         image_drop = tf.nn.dropout(image, self.keep_prob)
-        image_emb = tf.tanh(tf.nn.xw_plus_b(image_drop, self.embed_image_W, self.embed_image_b))
+        image_emb = tf.tanh(tf.matmul(image_drop, self.embed_image_W, self.embed_image_b))
 
         # fuse question & image
         scores = tf.mul(state_emb, image_emb)
@@ -209,7 +208,7 @@ class VQAModel(object):
         input_feed[self.ques_placeholder] = batch["questions"]
         input_feed[self.labels] = batch["answers"]
         input_feed[self.image_placeholder] = batch["images"]
-        input_feed[self.keep_prob] = self.config.keep_prob
+        input_feed[self.keep_prob] = 1 - self.config.dropout
 
         # output_feed contains the things we want to fetch.
         output_feed = [self.updates, self.summaries, self.loss, self.global_step, self.param_norm, self.gradient_norm]
@@ -274,33 +273,33 @@ class VQAModel(object):
                     self.saver.save(session, checkpoint_path, global_step=global_step)
 
                 # Sometimes evaluate model on dev loss, train F1/EM and dev F1/EM
-                if global_step % self.config.eval_every == 0:
+                # if global_step % self.config.eval_every == 0:
 
-                    # Get loss for entire dev set and log to tensorboard
-                    dev_loss = self.get_dev_loss(session, dev_context_path, dev_qn_path, dev_ans_path)
-                    logging.info("Epoch %d, Iter %d, dev loss: %f" % (epoch, global_step, dev_loss))
-                    write_summary(dev_loss, "dev/loss", summary_writer, global_step)
-
-
-                    # Get F1/EM on train set and log to tensorboard
-                    train_f1, train_em = self.check_f1_em(session, train_context_path, train_qn_path, train_ans_path, "train", num_samples=1000)
-                    logging.info("Epoch %d, Iter %d, Train F1 score: %f, Train EM score: %f" % (epoch, global_step, train_f1, train_em))
-                    write_summary(train_f1, "train/F1", summary_writer, global_step)
-                    write_summary(train_em, "train/EM", summary_writer, global_step)
+                #     # Get loss for entire dev set and log to tensorboard
+                #     dev_loss = self.get_dev_loss(session, dev_context_path, dev_qn_path, dev_ans_path)
+                #     logging.info("Epoch %d, Iter %d, dev loss: %f" % (epoch, global_step, dev_loss))
+                #     write_summary(dev_loss, "dev/loss", summary_writer, global_step)
 
 
-                    # Get F1/EM on dev set and log to tensorboard
-                    dev_f1, dev_em = self.check_f1_em(session, dev_context_path, dev_qn_path, dev_ans_path, "dev", num_samples=0)
-                    logging.info("Epoch %d, Iter %d, Dev F1 score: %f, Dev EM score: %f" % (epoch, global_step, dev_f1, dev_em))
-                    write_summary(dev_f1, "dev/F1", summary_writer, global_step)
-                    write_summary(dev_em, "dev/EM", summary_writer, global_step)
+                #     # Get F1/EM on train set and log to tensorboard
+                #     train_f1, train_em = self.check_f1_em(session, train_context_path, train_qn_path, train_ans_path, "train", num_samples=1000)
+                #     logging.info("Epoch %d, Iter %d, Train F1 score: %f, Train EM score: %f" % (epoch, global_step, train_f1, train_em))
+                #     write_summary(train_f1, "train/F1", summary_writer, global_step)
+                #     write_summary(train_em, "train/EM", summary_writer, global_step)
 
 
-                    # Early stopping based on dev EM. You could switch this to use F1 instead.
-                    if best_dev_em is None or dev_em > best_dev_em:
-                        best_dev_em = dev_em
-                        logging.info("Saving to %s..." % bestmodel_ckpt_path)
-                        self.bestmodel_saver.save(session, bestmodel_ckpt_path, global_step=global_step)
+                #     # Get F1/EM on dev set and log to tensorboard
+                #     dev_f1, dev_em = self.check_f1_em(session, dev_context_path, dev_qn_path, dev_ans_path, "dev", num_samples=0)
+                #     logging.info("Epoch %d, Iter %d, Dev F1 score: %f, Dev EM score: %f" % (epoch, global_step, dev_f1, dev_em))
+                #     write_summary(dev_f1, "dev/F1", summary_writer, global_step)
+                #     write_summary(dev_em, "dev/EM", summary_writer, global_step)
+
+
+                #     # Early stopping based on dev EM. You could switch this to use F1 instead.
+                #     if best_dev_em is None or dev_em > best_dev_em:
+                #         best_dev_em = dev_em
+                #         logging.info("Saving to %s..." % bestmodel_ckpt_path)
+                #         self.bestmodel_saver.save(session, bestmodel_ckpt_path, global_step=global_step)
 
 
             epoch_toc = time.time()
