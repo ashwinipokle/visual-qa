@@ -87,13 +87,16 @@ class VQAModel(object):
         self.vocab_size = vocab_size
 
         # Add all parts of the graph
-        #with tf.variable_scope("VQAModel"):
-        self.add_placeholders()
-        self.add_variables()
-        scores_emb = self.build_graph()
-        self.add_loss(scores_emb)
+        with tf.variable_scope("VQAModel"):
+            self.add_placeholders()
+            self.add_variables()
+            scores_emb = self.build_graph()
+            self.add_loss(scores_emb)
+            tf.get_variable_scope().reuse_variables()
+        
         # Define trainable parameters, gradient, gradient norm, and clip by gradient norm
         params = tf.trainable_variables()
+
         gradients = tf.gradients(self.loss, params)
         self.gradient_norm = tf.global_norm(gradients)
         clipped_gradients, _ = tf.clip_by_global_norm(gradients, self.config.max_gradient_norm)
@@ -103,8 +106,9 @@ class VQAModel(object):
         # (updates is what you need to fetch in session.run to do a gradient update)
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
         
-        opt = tf.train.AdamOptimizer(learning_rate=self.config.lr)
-        self.updates = opt.apply_gradients(zip(clipped_gradients, params), global_step=self.global_step)
+        with tf.variable_scope(tf.get_variable_scope(),reuse=False):
+            opt = tf.train.AdamOptimizer(learning_rate=self.config.lr)
+            self.updates = opt.apply_gradients(zip(clipped_gradients, params), global_step=self.global_step)
 
         # Define savers (for checkpointing) and summaries (for tensorboard)
         self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=self.config.keep)
