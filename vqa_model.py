@@ -181,7 +181,7 @@ class VQAModel(object):
         state_emb = tf.tanh(tf.matmul(state_drop, self.embed_state_W) + self.embed_state_b)
 
         image_drop = tf.nn.dropout(self.image_placeholder, self.keep_prob)
-        image_emb = tf.tanh(tf.matmul(image_drop, self.embed_image_W, self.embed_image_b))
+        image_emb = tf.tanh(tf.matmul(image_drop, self.embed_image_W)+ self.embed_image_b)
 
         # fuse question & image
         scores = tf.mul(state_emb, image_emb)
