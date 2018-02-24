@@ -128,17 +128,17 @@ class VQAModel(object):
         self.stacked_lstm = rnn_cell.MultiRNNCell([self.lstm_dropout_1, self.lstm_dropout_2])
 
         # state-embedding
-        random_embed_initializer = tf.random_uniform([2 * self.config.rnn_size * self.config.rnn_layer, self.config.common_embed_size], -0.08, 0.08)
-        self.embed_state_W = tf.get_variable('embed_state_W', initializer=random_embed_initializer)
-        self.embed_state_b = tf.get_variable('embed_state_b', tf.random_uniform([self.config.common_embed_size], -0.08, 0.08))
+        random_initializer = tf.random_uniform_initializer(-0.08, 0.08)
+        self.embed_state_W = tf.get_variable('embed_state_W', shape=[2 * self.config.rnn_size * self.config.rnn_layer, self.config.common_embed_size], initializer=random_initializer)
+        self.embed_state_b = tf.get_variable('embed_state_b', shape=[self.config.common_embed_size], initializer=random_initializer)
         
         # image-embedding
-        self.embed_image_W = tf.get_variable('embed_image_W', tf.random_uniform([self.config.image_size, self.config.common_embed_size], -0.08, 0.08))
-        self.embed_image_b = tf.get_variable('embed_image_b', tf.random_uniform([self.config.common_embed_size], -0.08, 0.08))
+        self.embed_image_W = tf.get_variable('embed_image_W', shape=[self.config.image_size, self.config.common_embed_size], initializer=random_initializer)
+        self.embed_image_b = tf.get_variable('embed_image_b', shape=[self.config.common_embed_size], initializer=random_initializer)
         
         # score-embedding
-        self.embed_score_W = tf.get_variable('embed_score_W', tf.random_uniform([self.config.hidden_size, self.config.common_embed_size], -0.08, 0.08))
-        self.embed_score_b = tf.get_variable('embed_score_b', tf.random_uniform([self.config.common_embed_size], -0.08, 0.08))
+        self.embed_score_W = tf.get_variable('embed_score_W', shape=[self.config.hidden_size, self.config.common_embed_size], intializer=random_initializer)
+        self.embed_score_b = tf.get_variable('embed_score_b', shape=[self.config.common_embed_size], initializer=random_initializer)
 
     def add_placeholders(self):
         """
@@ -329,7 +329,10 @@ if __name__ == '__main__':
 
     if not os.path.exists(config.output_path):
             os.makedirs(config.output_path)
-    file_handler = logging.FileHandler(os.path.join(config.output_path, "/log.txt"))
+            os.makedirs(config.log_output)
+
+    print("Output path", config.output_path, config.log_output)
+    file_handler = logging.FileHandler(os.path.join(config.log_output, "/log.txt"))
     logging.getLogger().addHandler(file_handler)
 
     print("Loading dataset")
