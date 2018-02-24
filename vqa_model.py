@@ -87,10 +87,10 @@ class VQAModel(object):
         self.vocab_size = vocab_size
 
         # Add all parts of the graph
-        with tf.variable_scope("VQAModel"):
-            self.add_placeholders()
-            self.add_variables()
-            scores_emb = self.build_graph()
+        #with tf.variable_scope("VQAModel"):
+        self.add_placeholders()
+        self.add_variables()
+        scores_emb = self.build_graph()
         
 	self.add_loss(scores_emb)
         # Define trainable parameters, gradient, gradient norm, and clip by gradient norm
@@ -118,6 +118,7 @@ class VQAModel(object):
     add variables of the model to the graph
     
     """
+
         random_initializer = tf.random_uniform_initializer(-0.08, 0.08)
         self.embed_ques_W =  tf.get_variable("embed_ques_W", shape=[self.vocab_size, self.config.input_embed_size], initializer=random_initializer)
 
