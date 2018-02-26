@@ -66,7 +66,7 @@ class Config():
             # Where to save things.
             self.output_path = output_path
         else:
-            self.output_path = "results/cnn_lstm_baseline/{:%Y%m%d_%H%M%S}/".format(datetime.now())
+            self.output_path = "evaluation/cnn_lstm_baseline/{:%Y%m%d_%H%M%S}/".format(datetime.now())
         self.model_output = self.output_path + "model.weights"
         self.eval_output = self.output_path + "results.txt"
         self.log_output = self.output_path + "log"
@@ -206,8 +206,6 @@ class VQAEvaluator(object):
 
     def generate(self, session, dataset, img_features, test_data, model_path):
         num_test = test_data['question'].shape[0]
-        saver = tf.train.Saver()
-        saver.restore(session, model_path)
 
         tStart_total = time.time()
         result = []
@@ -299,12 +297,17 @@ if __name__ == '__main__':
     vqa_evaluator = VQAEvaluator(config, vocab_size)
     init = tf.global_variables_initializer()
 
-    model_path = os.path.join(config.output_path, "vqa.ckpt")
+    model_path = "/home/team_v/vqa-model/visual-qa/results/cnn_lstm_baseline/20180224_223208/vqa.ckpt-35000.data-00000-of-00001"
 
     ### Train
     with tf.Session(config=gpu_config) as sess:
             sess.run(init)
-            # Train
+
+            saver = tf.train.Saver()
+            saver.restore(sess, model_path)
+            #all_vars = tf.get_collection('vars')
+            #for v in all_vars:
+            #    v_ = sess.run(v)
             vqa_evaluator.generate(sess, dataset, img_features, test_data, model_path)
 
     ### Test
