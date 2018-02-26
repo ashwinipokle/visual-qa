@@ -54,7 +54,7 @@ def get_data(config):
 
     return dataset, image_features, train_data
 
-def get_data_test(config):
+def get_test_data(config):
     dataset = {}
     test_data = {}
     # load json file
